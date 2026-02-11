@@ -18,6 +18,7 @@ class ReminderService
 
     /**
      * Fitur F1: Notifikasi Reminder Tugas (H+1)
+     * Dikirim ke nomor pribadi masing-masing
      */
     public function sendTaskReminders()
     {
@@ -32,16 +33,14 @@ class ReminderService
 
                 $formattedPhone = PhoneFormatter::format($user->phone);
 
-                $message = "Halo *{$user->name}*,\n\n";
-                $message .= "Kami perhatikan kamu belum mengumpulkan tugas: *{$task->title}*.\n";
-                $message .= "Batas pengumpulannya adalah kemarin. Yuk, segera submit di LMS agar progres belajarmu tetap terjaga!\n\n";
-                $message .= "Link LMS: https://lms.contoh.com\n";
-                $message .= "Semangat!";
+                $message = "Hai *{$user->name}*, semangat pagi! ☀️\n\n" .
+                           "Kami melihat tugas *\"{$task->title}\"* deadline-nya kemarin ({$task->deadline->format('d M Y')}).\n" .
+                           "Yuk segera kumpulkan di sini: {$task->link}\n\n" .
+                           "Kamu pasti bisa! 🚀\n" .
+                           "- Tim Akademik Maxy";
 
-                // 1. Masukkan ke Antrean Redis (Tetap pakai nomor asli agar terkirim)
                 SendWhatsAppMessageJob::dispatch($formattedPhone, $message);
 
-                // 2. Catat di Log dengan NOMOR TER-MASKING
                 MessageLog::create([
                     'recipient_phone' => $this->maskPhone($formattedPhone),
                     'message_type' => 'Task Reminder',
@@ -54,35 +53,34 @@ class ReminderService
 
     /**
      * Fitur F2 & F3: Blast Event (Morning Huddle & Friday Funday)
+     * Dikirim ke GRUP WhatsApp
      */
     public function sendEventBlast(string $type)
     {
-        $users = User::all();
-        $contentTemplate = $this->getEventContent($type);
+        // ID Grup
+        $groupId = "120363406911634253@g.us"; 
+        
+        $message = $this->getEventContent($type);
 
-        foreach ($users as $user) {
-            if (!$user->phone) continue;
-
-            $formattedPhone = PhoneFormatter::format($user->phone);
-            $message = str_replace('[Nama]', $user->name, $contentTemplate);
-
-            // 1. Masukkan ke Antrean Redis
-            SendWhatsAppMessageJob::dispatch($formattedPhone, $message);
-
-            // 2. Catat di Log dengan NOMOR TER-MASKING
-            MessageLog::create([
-                'recipient_phone' => $this->maskPhone($formattedPhone),
-                'message_type' => $type,
-                'content' => $message,
-                'status' => 'queued',
-            ]);
+        // Logika Video Teaser (Hanya untuk Friday Funday)
+        $urlFile = null;
+        if ($type === 'Friday Funday') {
+            // Menggunakan Direct Link Google Drive yang sudah kita buat
+            $urlFile = "https://res.cloudinary.com/dynyiyi97/video/upload/v1770811951/Video_Teaser_Sharing_Friday_Funday-2-2-2_gs91qh.mp4";
         }
+
+        // Kirim ke GRUP (Ditambahkan parameter $urlFile)
+        SendWhatsAppMessageJob::dispatch($groupId, $message, $urlFile);
+
+        // Catat di Log Monitoring
+        MessageLog::create([
+            'recipient_phone' => 'GROUP: Hackathon Batch 21',
+            'message_type' => $type,
+            'content' => $message . ($urlFile ? " [With Video Teaser]" : ""),
+            'status' => 'queued',
+        ]);
     }
 
-    /**
-     * Helper: Masking Nomor Telepon
-     * Contoh: 62882******86
-     */
     private function maskPhone(string $phone)
     {
         if (strlen($phone) < 8) return $phone;
@@ -92,9 +90,18 @@ class ReminderService
     private function getEventContent(string $type)
     {
         return match ($type) {
-            'Morning Huddle' => "Selamat pagi *[Nama]*! ☀️\n\nSiap untuk Morning Huddle hari ini? Yuk gabung sekarang untuk bahas agenda harian kita.\n\nLink: https://zoom.us/j/huddle\n\n_Quote: 'Do your best today!'_",
-            'Friday Funday' => "Happy Friday *[Nama]*! 🥳\n\nWaktunya santai sejenak di Friday Funday jam 15:00 nanti. Bakal ada games seru lho!\n\nLink join: https://zoom.us/j/fridayfunday",
-            default => "Halo *[Nama]*, ada informasi terbaru untukmu di LMS.",
+            'Morning Huddle' => "Selamat pagi Maxians! 🌅\n\n" .
+                                "Hari ini kita akan bahas *\"Consistency is key\"* dan sharing project.\n" .
+                                "Quote hari ini: _\"Consistency is key.\"_\n\n" .
+                                "Join di sini: https://meet.google.com/xyz\n" .
+                                "Jangan sampai ketinggalan! 💪",
+
+            'Friday Funday' => "Hai Maxians, akhir pekan sudah di depan mata! 🎉\n\n" .
+                               "Yuk kita tutup pekan dengan fun game & sharing seru.\n" .
+                               "Link join: https://meet.google.com/abc\n\n" .
+                               "Come with good vibes and happy energy! 🍿✨",
+
+            default => "Halo Maxians, ada informasi terbaru untukmu di LMS.",
         };
     }
 }
