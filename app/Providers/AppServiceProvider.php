@@ -11,7 +11,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        /** * Di sinilah "keajaiban" Interface bekerja.
+        /*
          * Ubah FakeWhatsAppGateway ke FonnteGateway untuk mengirim pesan asli.
          */
         $this->app->bind(

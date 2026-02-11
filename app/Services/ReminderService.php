@@ -41,7 +41,7 @@ class ReminderService
                 // 1. Masukkan ke Antrean Redis (Tetap pakai nomor asli agar terkirim)
                 SendWhatsAppMessageJob::dispatch($formattedPhone, $message);
 
-                // 2. Catat di Log dengan NOMOR TER-MASKING (Poin 9 Proposal)
+                // 2. Catat di Log dengan NOMOR TER-MASKING
                 MessageLog::create([
                     'recipient_phone' => $this->maskPhone($formattedPhone),
                     'message_type' => 'Task Reminder',
@@ -69,7 +69,7 @@ class ReminderService
             // 1. Masukkan ke Antrean Redis
             SendWhatsAppMessageJob::dispatch($formattedPhone, $message);
 
-            // 2. Catat di Log dengan NOMOR TER-MASKING (Poin 9 Proposal)
+            // 2. Catat di Log dengan NOMOR TER-MASKING
             MessageLog::create([
                 'recipient_phone' => $this->maskPhone($formattedPhone),
                 'message_type' => $type,
@@ -80,8 +80,8 @@ class ReminderService
     }
 
     /**
-     * Helper: Masking Nomor Telepon (Security Poin 9)
-     * Contoh: 62882022220086 -> 62882******86
+     * Helper: Masking Nomor Telepon
+     * Contoh: 62882******86
      */
     private function maskPhone(string $phone)
     {
